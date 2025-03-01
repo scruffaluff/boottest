@@ -1,4 +1,4 @@
-FROM fedora:40
+FROM fedora:41
 
 ARG TARGETARCH
 
@@ -11,18 +11,14 @@ RUN dnf install --assumeyes curl sudo
 # Disabling TTY requirement is necessary for CI workflows.
 RUN useradd --create-home --no-log-init fedora \
     && groupadd sudo \
-    && usermod --append --groups sudo,wheel fedora \
-    && printf "\nfedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
+    && usermod --append --groups sudo fedora \
+    && printf "fedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
 
-RUN printf "\nsession required pam_permit.so\n" /etc/pam.d/sudo
-RUN sudo --version
+# Fix shadow.
+RUN chmod 0640 /etc/shadow
 
 ENV HOME=/home/fedora USER=fedora
 USER fedora
-
-RUN id
-
-RUN sudo -n whoami
 
 # Install Bootware.
 COPY bootware.sh /usr/local/bin/bootware
