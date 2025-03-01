@@ -30,7 +30,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
       - name: Build directly
         run: |
-          docker build -f tests/integration/fedora.dockerfile
+          docker build -f tests/integration/fedora.dockerfile .
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
