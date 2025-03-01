@@ -1,0 +1,73 @@
+---
+- name: Check if Doas is available for Unix
+  ansible.builtin.shell: command -v doas # noqa command-instead-of-shell
+  changed_when: false
+  failed_when: false
+  register: super_doas_available
+  when: ansible_system != "Win32NT"
+
+- name: Enable passwordless doas for Unix
+  ansible.builtin.blockinfile:
+    block: |
+      # Enable passwordless doas for {{ user_id }} user.
+      permit nopass {{ user_id }}
+    create: true
+    marker: >-
+      # {mark} ANSIBLE MANAGED passwordless doas for {{ user_id }} BLOCK
+    mode: "400"
+    path: /etc/doas.d/doas.conf
+    validate: doas -C %s
+  become: true
+  when: >-
+    super_passwordless and ansible_system != "Win32NT" and
+    super_doas_available.rc == 0
+
+- name: Check if Sudo is available for Unix
+  ansible.builtin.shell: command -v visudo # noqa command-instead-of-shell
+  changed_when: false
+  failed_when: false
+  register: super_sudo_available
+  when: ansible_system != "Win32NT"
+
+- name: Disable annoying and unhelpful sudoedit error
+  ansible.builtin.blockinfile:
+    block: |
+      # Disable 'editing files in a writable directory is not permitted' error.
+      #
+      # Sudoedit will throw an error if editing a unwritable file in a writable
+      # directory. Visit https://unix.stackexchange.com/a/356145, for more
+      # information.
+      Defaults !sudoedit_checkdir
+    create: true
+    marker: "# {mark} ANSIBLE MANAGED sudoedit BLOCK"
+    # File needs to have 440 permissions as explained at
+    # https://wiki.archlinux.org/title/sudo#Sudoers_default_file_permissions.
+    mode: "440"
+    path: /etc/sudoers
+    validate: visudo --check --file %s
+  become: true
+  when: ansible_system != "Win32NT" and super_sudo_available.rc == 0
+
+- name: Enable passwordless sudo for Unix
+  ansible.builtin.blockinfile:
+    block: |
+      # Enable passwordless sudo for {{ user_id }} user.
+      {{ user_id }} ALL=(ALL) NOPASSWD:ALL
+    create: true
+    marker: >-
+      # {mark} ANSIBLE MANAGED passwordless sudo for {{ user_id }} BLOCK
+    # File needs to have 440 permissions as explained at
+    # https://wiki.archlinux.org/title/sudo#Sudoers_default_file_permissions.
+    mode: "440"
+    path: /etc/sudoers
+    validate: visudo --check --file %s
+  become: true
+  when: >-
+    super_passwordless and ansible_system != "Win32NT" and
+    super_sudo_available.rc == 0
+
+- name: Restrict administrator permission popup to once per session for Windows
+  ansible.windows.win_command: gsudo config CacheMode Auto
+  # Command always marks config as changed.
+  changed_when: true
+  when: super_passwordless and ansible_system == "Win32NT"

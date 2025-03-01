@@ -1,0 +1,69 @@
+---
+- name: Get latest Kind version for Linux
+  ansible.builtin.uri:
+    method: GET
+    return_content: true
+    url: https://formulae.brew.sh/api/formula/kind.json
+  register: kind_formula
+  when: ansible_system == "Linux"
+
+- name: Install Kind for Linux
+  ansible.builtin.get_url:
+    dest: /usr/local/bin/kind
+    force: true
+    mode: "755"
+    url: >-
+      https://github.com/kubernetes-sigs/kind/releases/download/v{{
+      kind_formula.json.versions.stable }}/kind-linux-{{ system_architecture }}
+  become: true
+  when: ansible_system == "Linux"
+
+- name: Install Kind for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name: kind
+  when: ansible_system == "Darwin"
+
+- name: Install Kind for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: kind
+  when: ansible_system == "Win32NT"
+
+- name: Create shell completion directories for Unix
+  ansible.builtin.file:
+    mode: "755"
+    path: "{{ item }}"
+    state: directory
+  become: true
+  loop:
+    - "{{ bash_completion }}"
+    - "{{ fish_completion }}"
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Generate Kind shell completions for Unix
+  ansible.builtin.shell: kind completion {{ item }} > /tmp/kind.{{ item }}
+  become: true
+  changed_when: true
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
+  loop:
+    - bash
+    - fish
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Install Kind shell completions for Unix
+  ansible.builtin.copy:
+    dest: "{{ item.dest }}"
+    force: true
+    mode: "644"
+    remote_src: true
+    src: /tmp/kind.{{ item.shell }}
+  become: true
+  loop:
+    - dest: "{{ bash_completion }}/kind"
+      shell: bash
+    - dest: "{{ fish_completion }}/kind.fish"
+      shell: fish
+  when: ansible_system in ["Darwin", "Linux"]

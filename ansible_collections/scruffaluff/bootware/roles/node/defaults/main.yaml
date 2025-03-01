@@ -1,0 +1,20 @@
+---
+node_applications:
+  - "@taplo/cli"
+  - "@vue/language-server"
+  - bash-language-server
+  - dockerfile-language-server-nodejs
+  - lean-language-server
+  - live-server
+  - playwright
+  - prettier
+  - speed-test
+  - speedscope
+  - taze
+  - typescript-language-server
+  - vls
+  - vscode-langservers-extracted
+  - wikit
+  - yaml-language-server
+node_versions:
+  - "22"

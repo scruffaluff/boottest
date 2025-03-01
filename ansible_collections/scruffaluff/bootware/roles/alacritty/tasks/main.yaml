@@ -1,0 +1,73 @@
+---
+- name: Install Alacritty for FreeBSD
+  become: true
+  community.general.pkgng:
+    name: alacritty
+  when: ansible_system == "FreeBSD"
+
+- name: Install Alacritty for Linux
+  ansible.builtin.package:
+    name: alacritty
+  become: true
+  when: ansible_system == "Linux"
+
+- name: Install Alacritty for MacOS
+  community.general.homebrew_cask:
+    accept_external_apps: true
+    name: alacritty
+    state: present
+  when: ansible_system == "Darwin"
+
+- name: Install Alacritty for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: alacritty
+  when: ansible_system == "Win32NT"
+
+- name: Create Alacritty configuration directory for Unix
+  ansible.builtin.file:
+    group: "{{ group_id }}"
+    mode: "755"
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/.config/alacritty"
+    state: directory
+  become: true
+  when: ansible_system != "Win32NT"
+
+- name: Create Alacritty configuration directory for Windows
+  ansible.windows.win_file:
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/AppData/Roaming/alacritty"
+    state: directory
+  when: ansible_system == "Win32NT"
+
+# Alacritty switched configuration file formats from YAML to TOML in version
+# 0.13.0. Both formats are copied to support all versions.
+- name: Copy Alacritty configuration file for Unix
+  ansible.builtin.template:
+    dest: "{{ user_home }}/.config/alacritty/{{ item.dest }}"
+    force: true
+    group: "{{ group_id }}"
+    mode: "644"
+    owner: "{{ user_id }}"
+    src: "{{ item.src }}"
+  become: true
+  loop:
+    - dest: alacritty.toml
+      src: alacritty.toml.j2
+    - dest: alacritty.yml
+      src: alacritty.yaml.j2
+  when: ansible_system != "Win32NT"
+
+- name: Copy Alacritty configuration file for Windows
+  ansible.windows.win_template:
+    dest: "{{ user_home }}/AppData/Roaming/alacritty/{{ item.dest }}"
+    force: true
+    owner: "{{ user_id }}"
+    src: "{{ item.src }}"
+  loop:
+    - dest: alacritty.toml
+      src: alacritty.toml.j2
+    - dest: alacritty.yml
+      src: alacritty.yaml.j2
+  when: ansible_system == "Win32NT"

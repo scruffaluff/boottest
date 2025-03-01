@@ -1,0 +1,112 @@
+// Configuraion file for Zellij.
+//
+// For more information, visit
+// https://zellij.dev/documentation/configuration.
+
+default_layout "layout"
+default_shell "{{ user_shell }}"
+
+keybinds {
+    tmux clear-defaults=true {}
+    unbind "h" "H" "Alt f" "Alt h" "Ctrl b" "Ctrl h" "Ctrl n" "Ctrl p" "Ctrl q"
+
+    shared_except "locked" {
+        bind "Alt j" { MoveFocusOrTab "Left"; }
+        bind "Alt k" { MoveFocus "Down"; }
+        bind "Alt l" { MoveFocus "Up"; }
+        bind "Alt ;" { MoveFocusOrTab "Right"; }
+        bind "Alt Down" { MovePane "Down"; }
+        bind "Alt Left" { MovePane "Left"; }
+        bind "Alt Right" { MovePane "Right"; }
+        bind "Alt Up" { MovePane "Up"; }
+    }
+    shared_except "pane" "locked" {
+        bind "Ctrl y" { SwitchToMode "Pane"; }
+    }
+    shared_among "renametab" "tab" {
+        bind "Alt j" { GoToPreviousTab; }
+        bind "Alt ;" { GoToNextTab; }
+        bind "Alt Left" { MoveTab "Left"; }
+        bind "Alt Right" { MoveTab "Right"; }
+    }
+
+    move {
+        bind "j" "Left" { MovePane "Left"; }
+        bind "k" "Down" { MovePane "Down"; }
+        bind "l" "Up" { MovePane "Up"; }
+        bind ";" "Right" { MovePane "Right"; }
+    }
+    normal {
+        bind "Alt m" { ToggleFocusFullscreen; }
+        bind "Alt w" { ToggleFloatingPanes; }
+    }
+    pane {
+        unbind "c" "d" "f"
+        bind "Ctrl m" { SwitchToMode "Normal"; }
+        bind "j" { MoveFocus "Left"; }
+        bind "k" { MoveFocus "Down"; }
+        bind "l" { MoveFocus "Up"; }
+        bind "m" { ToggleFocusFullscreen; SwitchToMode "Normal"; }
+        bind "r" { SwitchToMode "RenamePane"; PaneNameInput 0; }
+        bind "s" { SwitchToMode "Resize"; }
+        bind ";" { MoveFocus "Right"; }
+        bind "Down" { MovePane "Down"; }
+        bind "Left" { MovePane "Left"; }
+        bind "Right" { MovePane "Right"; }
+        bind "Up" { MovePane "Up"; }
+    }
+    resize {
+        bind "j" "Left" { Resize "Increase Left"; }
+        bind "k" "Down" { Resize "Increase Down"; }
+        bind "l" "Up" { Resize "Increase Up"; }
+        bind ";" "Right" { Resize "Increase Right"; }
+        bind "J" { Resize "Increase Left"; }
+        bind "K" { Resize "Increase Down"; }
+        bind "L" { Resize "Increase Up"; }
+        bind "y" { SwitchToMode "Normal"; }
+        bind ":" { Resize "Increase Right"; }
+    }
+    search {
+        unbind "j" "Ctrl f"
+        bind "k" "Down" { ScrollDown; }
+        bind "l" "Up" { ScrollUp; }
+    }
+    scroll {
+        unbind "j" "Ctrl f"
+        bind "k" "Down" { ScrollDown; }
+        bind "l" "Up" { ScrollUp; }
+    }
+    tab {
+        unbind "l" "Down" "Up"
+        bind "j" { GoToPreviousTab; }
+        bind ";" { GoToNextTab; }
+        bind "Left" { MoveTab "Left"; }
+        bind "Right" { MoveTab "Right"; }
+    }
+}
+
+session_serialization false
+serialize_pane_viewport false
+styled_underlines true
+
+themes {
+    default {
+        bg 147 161 161
+        black 253 246 227
+        blue 38 139 210
+        cyan 42 161 152
+        fg 40 110 160
+        green 133 153 0
+        magenta 211 54 130
+        orange 203 75 22
+        red 220 50 47
+        white 7 54 66
+        yellow 181 137 0
+    }
+}
+
+ui {
+    pane_frames {
+        rounded_corners true
+    }
+}

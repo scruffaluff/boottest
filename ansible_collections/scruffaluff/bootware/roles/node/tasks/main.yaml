@@ -1,0 +1,149 @@
+---
+- name: Install Node for FreeBSD
+  become: true
+  community.general.pkgng:
+    name:
+      - node22
+      - npm-node22
+  when: ansible_system == "FreeBSD"
+
+- name: Install Node for Linux
+  ansible.builtin.package:
+    name:
+      - nodejs
+      - "{{ 'nodejs-npm' if ansible_pkg_mgr in ['dnf'] else 'npm' }}"
+  become: true
+  when: ansible_system == "Linux"
+
+- name: Install Node for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name: node
+  when: ansible_system == "Darwin"
+
+- name: Install Node for OpenWrt
+  become: true
+  community.general.opkg:
+    name:
+      - node
+      - node-npm
+  when: ansible_pkg_mgr == "opkg"
+
+- name: Install Node for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: nodejs
+  when: ansible_system == "Win32NT"
+
+- name: Create Node applications directory for Unix
+  ansible.builtin.file:
+    group: "{{ group_id }}"
+    mode: "755"
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/.npm/global"
+    state: directory
+  become: true
+  when: ansible_system != "Win32NT" and user_id != "root"
+
+- name: Configure Node applications directory for Unix
+  ansible.builtin.lineinfile:
+    create: true
+    firstmatch: true
+    group: "{{ group_id }}"
+    line: "{{ item.line }}"
+    mode: "660"
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/.npmrc"
+    regex: "^\\s*{{ item.key }}\\b"
+    state: present
+  become: true
+  loop:
+    - key: prefix
+      line: prefix = "{{ user_home }}/.npm/global"
+    - key: update-notifier
+      line: update-notifier = false
+  when: ansible_system != "Win32NT"
+
+- name: Create Node applications directory for Windows
+  ansible.windows.win_file:
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/.npm/global"
+    state: directory
+  when: ansible_system == "Win32NT"
+
+- name: Update user path to include Node applications for Windows
+  ansible.windows.win_path:
+    elements: "{{ user_home }}\\.npm\\global"
+    scope: user
+  when: ansible_system == "Win32NT"
+
+- name: Configure Node applications directory for Windows
+  community.windows.win_lineinfile:
+    create: true
+    firstmatch: true
+    line: "{{ item.line }}"
+    path: "{{ user_home }}/.npmrc"
+    regex: "^\\s*{{ item.key }}\\b"
+    state: present
+  loop:
+    - key: prefix
+      line: >-
+        prefix = "{{ user_home | replace(node_backslash, '/') }}/.npm/global"
+    - key: update-notifier
+      line: update-notifier = false
+  vars:
+    node_backslash: "\\"
+  when: ansible_system == "Win32NT"
+
+- name: Install Node applications for Unix
+  ansible.builtin.command:
+    cmd: npm install --global {{ item }}
+  become: true
+  become_user: "{{ user_id }}"
+  # Command always marks application as changed.
+  changed_when: true
+  loop: "{{ ['pnpm'] + node_applications }}"
+  when: ansible_system != "Win32NT" and user_id != "root"
+
+- name: Install Node applications for Windows
+  ansible.windows.win_shell: npm install --global {{ item }}
+  # Command always marks application as changed.
+  changed_when: true
+  environment:
+    Path: "{{ scoop_apps }}\\nodejs\\current;{{ ansible_env.Path }}"
+  loop: "{{ ['pnpm'] + node_applications }}"
+  when: ansible_system == "Win32NT"
+
+- name: Create user shell completion directories for Unix
+  ansible.builtin.file:
+    group: "{{ group_id }}"
+    mode: "755"
+    owner: "{{ user_id }}"
+    path: "{{ item }}"
+    state: directory
+  become: true
+  loop:
+    - "{{ bash_user_completion }}"
+    - "{{ fish_user_completion }}"
+  when: ansible_system != "Win32NT" and user_id != "root"
+
+- name: Generate PNPM user shell completions for Unix
+  ansible.builtin.shell:
+    cmd: pnpm completion {{ item.shell }} > {{ item.path }}
+  become: true
+  become_user: "{{ user_id }}"
+  changed_when: true
+  environment:
+    PATH: "{{ user_home }}/.npm/global/bin:{{ ansible_env.PATH }}"
+  loop:
+    - path: "{{ bash_user_completion }}/pnpm"
+      shell: bash
+    - path: "{{ fish_user_completion }}/pnpm.fish"
+      shell: fish
+  when: ansible_system != "Win32NT" and user_id != "root"
+
+- name: Mark role as executed to prevent reruns
+  ansible.builtin.set_fact:
+    cacheable: true
+    node_role_executed: true

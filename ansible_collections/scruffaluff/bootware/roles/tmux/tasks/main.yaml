@@ -1,0 +1,44 @@
+---
+# TODO: Add Tmate when it is available on stable Alpine. Check
+# https://pkgs.alpinelinux.org/packages?name=tmate for status.
+- name: Install Tmux for Alpine
+  become: true
+  community.general.apk:
+    name: tmux
+  when: ansible_pkg_mgr == "apk"
+
+- name: Install Tmux for FreeBSD
+  become: true
+  community.general.pkgng:
+    name:
+      - tmate
+      - tmux
+  when: ansible_system == "FreeBSD"
+
+- name: Install Tmux for Linux
+  ansible.builtin.package:
+    name:
+      - tmate
+      - tmux
+  become: true
+  when: ansible_system == "Linux" and ansible_pkg_mgr != "apk"
+
+- name: Install Tmux for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name:
+      - tmate
+      - tmux
+  when: ansible_system == "Darwin"
+
+- name: Copy Tmux settings file for Unix
+  ansible.builtin.template:
+    dest: "{{ user_home }}/.tmux.conf"
+    force: true
+    group: "{{ group_id }}"
+    mode: "640"
+    owner: "{{ user_id }}"
+    src: tmux.conf.j2
+  become: true
+  when: ansible_system != "Win32NT"

@@ -1,0 +1,103 @@
+---
+- name: Install Kubectl for Alpine
+  become: true
+  community.general.apk:
+    name: kubectl
+    repository: http://dl-cdn.alpinelinux.org/alpine/edge/community
+    state: latest
+    update_cache: true
+  when: ansible_pkg_mgr == "apk"
+
+- name: Install Kubectl for FreeBSD
+  become: true
+  community.general.pkgng:
+    name: kubectl
+  when: ansible_system == "FreeBSD"
+
+- name: Install Kubectl for Linux
+  ansible.builtin.package:
+    name: kubectl
+  become: true
+  ignore_errors: true
+  register: kubectl_linux
+  when: ansible_system == "Linux" and ansible_pkg_mgr != "apk"
+
+- name: Get latest Kubectl version for Linux
+  ansible.builtin.uri:
+    method: GET
+    return_content: true
+    url: https://dl.k8s.io/release/stable.txt
+  register: kubectl_version
+  when: >-
+    ansible_system == "Linux" and ansible_pkg_mgr != "apk" and kubectl_linux is
+    failed
+
+- name: Install Kubectl for Linux
+  ansible.builtin.get_url:
+    dest: /usr/local/bin/kubectl
+    force: true
+    mode: "755"
+    url: >-
+      https://dl.k8s.io/release/{{ kubectl_version.content }}/bin/linux/{{
+      system_architecture }}/kubectl
+  become: true
+  when: >-
+    ansible_system == "Linux" and ansible_pkg_mgr != "apk" and kubectl_linux is
+    failed
+
+- name: Install Kubectl for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name: kubectl
+  when: ansible_system == "Darwin"
+
+- name: Install Kubectl for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: kubectl
+  when: ansible_system == "Win32NT"
+
+- name: Check if Fish executable is available
+  ansible.builtin.stat:
+    path: "{{ fish_executable }}"
+  register: kubectl_fish
+  when: ansible_system != "Win32NT"
+
+- name: Create shell completion directories for Unix
+  ansible.builtin.file:
+    mode: "755"
+    path: "{{ item }}"
+    state: directory
+  become: true
+  loop:
+    - "{{ bash_completion }}"
+    - "{{ fish_completion }}"
+  when: ansible_system != "Win32NT"
+
+- name: Create Kubectl shell completions for Unix
+  ansible.builtin.shell:
+    cmd: kubectl completion {{ item }} > /tmp/kubectl.{{ item }}
+  become: true
+  changed_when: true
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
+  loop:
+    - bash
+    - fish
+  when: ansible_system != "Win32NT"
+
+- name: Install Kubectl shell completions for Unix
+  ansible.builtin.copy:
+    dest: "{{ item.dest }}"
+    force: true
+    mode: "644"
+    remote_src: true
+    src: /tmp/kubectl.{{ item.shell }}
+  become: true
+  loop:
+    - dest: "{{ bash_completion }}/kubectl"
+      shell: bash
+    - dest: "{{ fish_completion }}/kubectl.fish"
+      shell: fish
+  when: ansible_system != "Win32NT"

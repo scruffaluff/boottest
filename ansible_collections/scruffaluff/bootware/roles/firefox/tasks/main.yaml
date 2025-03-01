@@ -1,0 +1,81 @@
+---
+- name: Install Firefox for Debian
+  ansible.builtin.apt:
+    name: firefox
+  become: true
+  ignore_errors: true
+  register: firefox_debian
+  when: ansible_pkg_mgr == "apt" and ansible_distribution != "Ubuntu"
+
+- name: Install Firefox for Debian
+  ansible.builtin.apt:
+    name: firefox-esr
+  become: true
+  when: >-
+    ansible_pkg_mgr == "apt" and ansible_distribution != "Ubuntu" and
+    firefox_debian is failed
+
+- name: Install Firefox for FreeBSD
+  become: true
+  community.general.pkgng:
+    name: firefox
+  when: ansible_system == "FreeBSD"
+
+- name: Install Firefox for Linux
+  ansible.builtin.package:
+    name: firefox
+  become: true
+  when: ansible_system == "Linux" and ansible_pkg_mgr != "apt"
+
+- name: Install Firefox for MacOS
+  community.general.homebrew_cask:
+    accept_external_apps: true
+    name: firefox
+    state: present
+  when: ansible_system == "Darwin"
+
+- name: Install Firefox for Ubuntu
+  ansible.builtin.import_tasks: ubuntu.yaml
+  when: ansible_distribution == "Ubuntu"
+
+- name: Install Firefox for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: firefox
+  when: ansible_system == "Win32NT"
+
+# Ubuntu is skipped because its version of Firefox depends on Snap.
+- name: Find Firefox profiles for Unix
+  become: true
+  become_user: "{{ user_id }}"
+  scruffaluff.bootware.firefox_profiles:
+    user: "{{ user_id }}"
+  register: firefox_profiles_unix
+  when: ansible_system != "Win32NT" and user_id != "root"
+
+- name: Find Firefox profiles for Windows
+  scruffaluff.bootware.win_firefox_profiles:
+    user: "{{ user_id }}"
+  register: firefox_profiles_windows
+  when: ansible_system == "Win32NT"
+
+- name: Copy Firefox user preferences for Unix
+  ansible.builtin.copy:
+    dest: "{{ item }}/user.js"
+    force: true
+    group: "{{ group_id }}"
+    mode: "640"
+    owner: "{{ user_id }}"
+    src: user.js
+  become: true
+  loop: "{{ firefox_profiles_unix['paths'] }}"
+  when: ansible_system != "Win32NT" and user_id != "root"
+
+- name: Copy Firefox user preferences for Windows
+  ansible.windows.win_copy:
+    dest: "{{ item }}/user.js"
+    force: true
+    owner: "{{ user_id }}"
+    src: user.js
+  loop: "{{ firefox_profiles_windows['paths'] }}"
+  when: ansible_system == "Win32NT"

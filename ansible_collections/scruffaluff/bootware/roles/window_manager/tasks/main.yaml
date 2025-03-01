@@ -1,0 +1,64 @@
+---
+- name: Install Forge extension for GNOME desktops
+  ansible.builtin.import_tasks: forge.yaml
+  when: ansible_system in ["FreeBSD", "Linux"] and gnome_desktop
+
+- name: Install Amethyst for MacOS
+  community.general.homebrew_cask:
+    accept_external_apps: true
+    name: amethyst
+    state: present
+  when: ansible_system == "Darwin"
+
+- name: Install GlazeWM for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name:
+      - glazewm
+      - zebar
+  when: ansible_system == "Win32NT"
+
+- name: Create Amethyst configuration directory for MacOS
+  ansible.builtin.file:
+    dest: "{{ user_home }}/.config/amethyst"
+    group: "{{ group_id }}"
+    mode: "755"
+    owner: "{{ user_id }}"
+    state: directory
+  become: true
+  when: ansible_system == "Darwin"
+
+- name: Copy Amethyst configuration file for MacOS
+  ansible.builtin.copy:
+    dest: "{{ user_home }}/.config/amethyst/amethyst.yml"
+    force: true
+    group: "{{ group_id }}"
+    mode: "644"
+    owner: "{{ user_id }}"
+    src: amethyst.yaml
+  become: true
+  when: ansible_system == "Darwin"
+
+- name: Create GlazeWM configuration directory for Windows
+  ansible.windows.win_file:
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/.glzr/glazewm"
+    state: directory
+  when: ansible_system == "Win32NT"
+
+- name: Copy GlazeWM configuration file for Windows
+  ansible.windows.win_copy:
+    dest: "{{ user_home }}/.glzr/glazewm/config.yaml"
+    force: true
+    owner: "{{ user_id }}"
+    src: glaze.yaml
+  when: ansible_system == "Win32NT"
+
+- name: Add GlazeWM to startup applications for Windows
+  community.windows.win_shortcut:
+    dest: >-
+      {{ user_home }}\\AppData\\Roaming\\Microsoft\\Windows\\Start
+      Menu\\Programs\\Startup\\GlazeWM.lnk
+    icon: "{{ scoop_apps }}\\glazewm\\current\\GlazeWM.exe,0"
+    src: "{{ scoop_apps }}\\glazewm\\current\\GlazeWM.exe"
+  when: ansible_system == "Win32NT"

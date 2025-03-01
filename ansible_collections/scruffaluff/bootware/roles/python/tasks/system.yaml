@@ -1,0 +1,166 @@
+---
+- name: Install Python for Alpine
+  become: true
+  community.general.apk:
+    name:
+      - pipx
+      - py3-pip
+      - python3
+      - python3-dev
+  when: ansible_pkg_mgr == "apk"
+
+- name: Install Python for Arch
+  become: true
+  community.general.pacman:
+    name:
+      - python
+      - python-pip
+      - python-pipx
+  when: ansible_pkg_mgr == "pacman"
+
+- name: Install Python for Debian
+  ansible.builtin.apt:
+    name:
+      - pipx
+      - python3
+      - python3-dev
+      - python3-pip
+      - python3-venv
+  become: true
+  when: ansible_pkg_mgr == "apt"
+
+- name: Install Python for Fedora
+  ansible.builtin.dnf:
+    name:
+      - pipx
+      - python3
+      - python3-devel
+      - python3-pip
+  become: true
+  when: ansible_pkg_mgr in ["dnf", "dnf5"]
+
+# Rust is required for installing many Python applications on FreeBSD.
+- name: Install Python for FreeBSD
+  become: true
+  community.general.pkgng:
+    name:
+      - py311-pip
+      - py311-pipx
+      - python3
+      - rust
+  when: ansible_system == "FreeBSD"
+
+- name: Install Python for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name:
+      - pipx
+      - python3
+  when: ansible_system == "Darwin"
+
+- name: Install Python for OpenWrt
+  become: true
+  community.general.opkg:
+    name:
+      - python3
+      - python3-dev
+      - python3-pip
+      - python3-venv
+  when: ansible_pkg_mgr == "opkg"
+
+- name: Install Python for Suse
+  become: true
+  community.general.zypper:
+    name:
+      - python3
+      - python3-pip
+      - python312-pipx
+  when: ansible_pkg_mgr == "zypper"
+
+- name: Install Python for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name:
+      - pipx
+      - python
+  when: ansible_system == "Win32NT"
+
+- name: Make Python symlinks for MacOS
+  ansible.builtin.file:
+    src: "{{ python_brew_prefix }}/bin/{{ item }}3"
+    dest: "{{ python_brew_prefix }}/bin/{{ item }}"
+    force: true
+    mode: "755"
+    state: link
+  become: true
+  loop:
+    - pip
+    - python
+  vars:
+    python_brew_prefix: >-
+      {{ '/opt/homebrew' if ansible_architecture in ['aarch64', 'arm64'] else
+      '/usr/local' }}
+  when: ansible_system == "Darwin"
+
+- name: Remove Microsoft Store links masquerading as Python for Windows
+  ansible.windows.win_file:
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/AppData/Local/Microsoft/WindowsApps/{{ item }}"
+    state: absent
+  loop:
+    - python.exe
+    - python3.exe
+  when: ansible_system == "Win32NT"
+
+- name: Create user binaries directory for Unix
+  ansible.builtin.file:
+    dest: "{{ user_home }}/.local/bin"
+    group: "{{ group_id }}"
+    mode: "755"
+    owner: "{{ user_id }}"
+    state: directory
+  become: true
+  when: ansible_system != "Win32NT"
+
+- name: Create user binaries directory for Windows
+  ansible.windows.win_file:
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/.local/bin"
+    state: directory
+  when: ansible_system == "Win32NT"
+
+- name: Update user path to include Python applications for Windows
+  ansible.windows.win_path:
+    elements: "{{ user_home }}\\.local\\bin"
+    scope: user
+  when: ansible_system == "Win32NT"
+
+- name: Install Python applications for Unix
+  ansible.builtin.shell: # noqa command-instead-of-shell
+    cmd: >-
+      pipx install {{ item.name if item.name is defined else item }}{{ ' && pipx
+      inject ' + item.name + ' ' + (item.extras | join(' ')) if item.extras is
+      defined else '' }}
+  become: true
+  become_user: "{{ user_id }}"
+  changed_when: "'already installed' not in python_application_unix.stderr"
+  environment:
+    PATH: >-
+      {{ user_home }}/.local/bin:/opt/homebrew/bin:/usr/local/bin:{{
+      ansible_env.PATH }}
+  loop: "{{ python_applications }}"
+  register: python_application_unix
+  when: ansible_system != "Win32NT" and ansible_pkg_mgr != "opkg"
+
+- name: Install Python applications for Windows
+  ansible.windows.win_shell: >-
+    (pipx install {{ item.name if item.name is defined else item }}) -And ({{
+    'pipx inject ' + item.name + ' ' + (item.extras | join(' ')) if item.extras
+    is defined else '? .' }})
+  changed_when: "'already installed' not in python_application_windows"
+  environment:
+    Path: "{{ scoop_shims }};{{ ansible_env.Path }}"
+  loop: "{{ python_applications }}"
+  register: python_application_windows
+  when: ansible_system == "Win32NT"

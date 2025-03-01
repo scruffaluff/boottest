@@ -1,0 +1,94 @@
+---
+- name: Install Libvirt for Alpine
+  become: true
+  community.general.apk:
+    name:
+      - libvirt
+      - libvirt-client
+      - virt-install
+      - virt-viewer
+  when: ansible_pkg_mgr == "apk"
+
+- name: Install Libvirt for Arch
+  become: true
+  community.general.pacman:
+    name:
+      - guestfs-tools
+      - libguestfs
+      - libvirt
+      - spice-gtk
+      - virt-install
+      - virt-viewer
+  when: ansible_pkg_mgr == "pacman"
+
+- name: Install Libvirt for Debian
+  ansible.builtin.apt:
+    name:
+      - guestfs-tools
+      - libguestfs-rescue
+      - libguestfs-rsync
+      - libguestfs-tools
+      - libvirt-clients
+      - libvirt0
+      - spice-client-gtk
+      - virt-viewer
+      - virtinst
+  become: true
+  when: ansible_pkg_mgr == "apt"
+
+- name: Install Libvirt for FreeBSD
+  become: true
+  community.general.pkgng:
+    name:
+      - libvirt
+      - spice-gtk
+      - virt-manager
+      - virt-viewer
+  when: ansible_system == "FreeBSD"
+
+- name: Install Libvirt for Fedora
+  ansible.builtin.package:
+    name:
+      - guestfs-tools
+      - libguestfs
+      - libguestfs-rescue
+      - libguestfs-rsync
+      - libvirt
+      - libvirt-client
+      - spice-gtk-tools
+      - virt-install
+      - virt-top
+      - virt-viewer
+  become: true
+  when: ansible_pkg_mgr in ["dnf", "dnf5"]
+
+- name: Install Libvirt for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name:
+      - libvirt
+      - spice-gtk
+      - virt-manager
+  when: ansible_system == "Darwin"
+
+- name: Install Libvirt for Suse
+  ansible.builtin.package:
+    name:
+      - guestfs-tools
+      - libguestfs
+      - libguestfs-rescue
+      - libguestfs-rsync
+      - libvirt
+      - libvirt-client
+      - virt-install
+      - virt-top
+      - virt-viewer
+  become: true
+  when: ansible_pkg_mgr == "zypper"
+
+- name: Install Libvirt for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: virt-viewer
+  when: ansible_system == "Win32NT"

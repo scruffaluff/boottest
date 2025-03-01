@@ -1,0 +1,11 @@
+---
+powershell_modules:
+  - GcloudTabComplete
+  - npm-completion
+  - Pester
+  - PowerShellGet
+  - PSKubectlCompletion
+  - PSProfiler
+  - PSReadLine
+  - PSScriptAnalyzer
+  - VSSetup

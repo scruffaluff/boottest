@@ -1,0 +1,91 @@
+---
+- name: Install Velero for Linux
+  ansible.builtin.package:
+    name: velero
+  become: true
+  ignore_errors: true
+  register: velero_linux
+  when: ansible_system == "Linux"
+
+- name: Get latest Velero version for Linux
+  ansible.builtin.uri:
+    method: GET
+    return_content: true
+    url: https://formulae.brew.sh/api/formula/velero.json
+  register: velero_formula
+  when: ansible_system == "Linux" and velero_linux is failed
+
+- name: Download Velero for Linux
+  ansible.builtin.unarchive:
+    dest: /tmp
+    mode: "777"
+    remote_src: true
+    src: >-
+      https://github.com/vmware-tanzu/velero/releases/download/v{{
+      velero_formula.json.versions.stable }}/velero-v{{
+      velero_formula.json.versions.stable }}-linux-{{ system_architecture
+      }}.tar.gz
+  when: ansible_system == "Linux" and velero_linux is failed
+
+- name: Install Velero for Linux
+  ansible.builtin.copy:
+    dest: /usr/local/bin/velero
+    force: true
+    mode: "755"
+    remote_src: true
+    src: >-
+      /tmp/velero-v{{ velero_formula.json.versions.stable }}-linux-{{
+      system_architecture }}/velero
+  become: true
+  when: ansible_system == "Linux" and velero_linux is failed
+
+- name: Install Velero for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name: velero
+  when: ansible_system == "Darwin"
+
+- name: Install Velero for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: velero
+  when: ansible_system == "Win32NT"
+
+- name: Create shell completion directories for Unix
+  ansible.builtin.file:
+    mode: "755"
+    path: "{{ item }}"
+    state: directory
+  become: true
+  loop:
+    - "{{ bash_completion }}"
+    - "{{ fish_completion }}"
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Create Velero shell completions for Unix
+  ansible.builtin.shell:
+    cmd: velero completion {{ item }} > /tmp/velero.{{ item }}
+  become: true
+  changed_when: true
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
+  loop:
+    - bash
+    - fish
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Install Velero shell completions for Unix
+  ansible.builtin.copy:
+    dest: "{{ item.dest }}"
+    force: true
+    mode: "644"
+    remote_src: true
+    src: /tmp/velero.{{ item.shell }}
+  become: true
+  loop:
+    - dest: "{{ bash_completion }}/velero"
+      shell: bash
+    - dest: "{{ fish_completion }}/velero.fish"
+      shell: fish
+  when: ansible_system in ["Darwin", "Linux"]

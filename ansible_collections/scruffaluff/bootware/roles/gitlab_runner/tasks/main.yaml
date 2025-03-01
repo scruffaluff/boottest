@@ -1,0 +1,139 @@
+---
+- name: Install GitLab Runner for Alpine
+  become: true
+  community.general.apk:
+    name: gitlab-runner
+  when: ansible_pkg_mgr == "apk"
+
+- name: Install GitLab Runner for Arch
+  become: true
+  community.general.pacman:
+    name: gitlab-runner
+  when: ansible_pkg_mgr == "pacman" and system_architecture == "amd64"
+
+- name: Install GitLab Runner for Debian
+  ansible.builtin.apt:
+    deb: "{{ item }}"
+  become: true
+  loop:
+    - https://s3.dualstack.us-east-1.amazonaws.com/gitlab-runner-downloads/latest/deb/gitlab-runner-helper-images.deb
+    - https://s3.dualstack.us-east-1.amazonaws.com/gitlab-runner-downloads/latest/deb/gitlab-runner_{{
+      system_architecture }}.deb
+  when: ansible_pkg_mgr == "apt"
+
+- name: Add GitLab GPG key for Fedora and Suse
+  ansible.builtin.rpm_key:
+    key: https://packages.gitlab.com/runner/gitlab-runner/gpgkey/runner-gitlab-runner-49F16C5CC3A0F81F.pub.gpg
+  become: true
+  when: ansible_pkg_mgr in ["dnf", "dnf5", "zypper"]
+
+- name: Install GitLab Runner for Fedora
+  ansible.builtin.dnf:
+    # GitLab GPG key is frequently mismatched with GitLab runner package.
+    disable_gpg_check: true
+    name: "{{ item }}"
+  become: true
+  loop:
+    - https://s3.dualstack.us-east-1.amazonaws.com/gitlab-runner-downloads/latest/rpm/gitlab-runner-helper-images.rpm
+    - https://s3.dualstack.us-east-1.amazonaws.com/gitlab-runner-downloads/latest/rpm/gitlab-runner_{{
+      system_architecture }}.rpm
+  when: ansible_pkg_mgr in ["dnf", "dnf5"]
+
+- name: Install GitLab Runner for FreeBSD
+  become: true
+  community.general.pkgng:
+    name: gitlab-runner
+  when: ansible_system == "FreeBSD"
+
+- name: Install GitLab Runner for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name: gitlab-runner
+  when: ansible_system == "Darwin"
+
+- name: Install GitLab Runner for Suse
+  become: true
+  community.general.zypper:
+    name: "{{ item }}"
+  loop:
+    - https://s3.dualstack.us-east-1.amazonaws.com/gitlab-runner-downloads/latest/rpm/gitlab-runner-helper-images.rpm
+    - https://s3.dualstack.us-east-1.amazonaws.com/gitlab-runner-downloads/latest/rpm/gitlab-runner_{{
+      system_architecture }}.rpm
+  when: ansible_pkg_mgr == "zypper"
+
+- name: Install GitLab Runner for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: gitlab-runner
+  when: ansible_system == "Win32NT"
+
+- name: Get all groups for Unix
+  ansible.builtin.getent:
+    database: group
+    split: ":"
+  become: true
+  when: ansible_system in ["FreeBSD", "Linux"]
+
+- name: Configure GitLab runner user for MacOS
+  ansible.builtin.user:
+    append: true
+    groups:
+      - wheel
+    name: gitlab-runner
+    shell: /bin/bash
+  become: true
+  when: ansible_system == "Darwin"
+
+- name: Configure GitLab runner user for Unix
+  ansible.builtin.user:
+    append: true
+    groups: >-
+      {{ ['docker', 'wheel'] | intersect(ansible_facts.getent_group.keys()) }}
+    name: gitlab-runner
+    shell: /bin/bash
+  become: true
+  when: ansible_system in ["FreeBSD", "Linux"]
+
+- name: Check if Doas is available for Unix
+  ansible.builtin.shell: command -v doas # noqa command-instead-of-shell
+  changed_when: false
+  failed_when: false
+  register: gitlab_runner_doas_available
+  when: ansible_system != "Win32NT"
+
+- name: Enable GitHub passwordless doas for Unix
+  ansible.builtin.blockinfile:
+    block: |
+      # Enable passwordless doas for gitlab-runner user.
+      permit nopass gitlab-runner
+    create: true
+    marker: >-
+      # {mark} ANSIBLE MANAGED passwordless doas for gitlab-runner BLOCK
+    mode: "400"
+    path: /etc/doas.d/doas.conf
+    validate: doas -C %s
+  become: true
+  when: ansible_system != "Win32NT" and gitlab_runner_doas_available.rc == 0
+
+- name: Check if Sudo is available for Unix
+  ansible.builtin.shell: command -v visudo # noqa command-instead-of-shell
+  changed_when: false
+  failed_when: false
+  register: gitlab_runner_sudo_available
+  when: ansible_system != "Win32NT"
+
+- name: Enable GitHub Runner passwordless sudo for Unix
+  ansible.builtin.blockinfile:
+    block: |
+      # Enable passwordless sudo for gitlab-runner user.
+      gitlab-runner ALL=(ALL) NOPASSWD:ALL
+    create: true
+    marker: "# {mark} ANSIBLE MANAGED passwordless sudo for gitlab-runner BLOCK"
+    # File needs to have 440 permissions as explained at
+    # https://wiki.archlinux.org/title/sudo#Sudoers_default_file_permissions.
+    mode: "440"
+    path: /etc/sudoers
+    validate: visudo --check --file %s
+  become: true
+  when: ansible_system != "Win32NT" and gitlab_runner_sudo_available.rc == 0

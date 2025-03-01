@@ -1,0 +1,40 @@
+---
+- name: Disable root user login for Unix
+  ansible.builtin.user:
+    name: root
+    shell: /usr/sbin/nologin
+  become: true
+  when: ansible_system != "Win32NT"
+
+- name: Disable SSH password login for Unix
+  ansible.builtin.lineinfile:
+    create: false
+    # SSH daemon uses the first matching setting pair.
+    firstmatch: true
+    line: "{{ item.key }} {{ item.value }}"
+    path: /etc/ssh/sshd_config
+    regex: "^#?\\s*{{ item.key }}"
+    state: present
+  become: true
+  loop:
+    - key: PasswordAuthentication
+      value: "no"
+    - key: PermitRootLogin
+      value: "no"
+  when: ansible_system != "Win32NT"
+
+- name: Disable SSH password login for Windows
+  community.windows.win_lineinfile:
+    create: false
+    # SSH daemon uses the first matching setting pair.
+    firstmatch: true
+    line: "{{ item.key }} {{ item.value }}"
+    path: C:/ProgramData/ssh/sshd_config
+    regex: "^#?\\s*{{ item.key }}"
+    state: present
+  loop:
+    - key: PasswordAuthentication
+      value: "no"
+    - key: PermitRootLogin
+      value: "no"
+  when: ansible_system == "Win32NT"

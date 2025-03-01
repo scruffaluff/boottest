@@ -1,0 +1,135 @@
+---
+- name: Install Fish for FreeBSD
+  become: true
+  community.general.pkgng:
+    name: fish
+  when: ansible_system == "FreeBSD"
+
+- name: Install Fish for Linux
+  ansible.builtin.package:
+    name: fish
+  become: true
+  when: ansible_system == "Linux"
+
+- name: Install Fish for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name: fish
+  when: ansible_system == "Darwin"
+
+- name: Create Fish completions directory for Unix
+  ansible.builtin.file:
+    group: "{{ group_id }}"
+    mode: "755"
+    owner: "{{ user_id }}"
+    path: "{{ fish_user_completion }}"
+    state: directory
+  become: true
+  when: ansible_system != "Win32NT"
+
+- name: Create Fish functions directory for Unix
+  ansible.builtin.file:
+    group: "{{ group_id }}"
+    mode: "755"
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/.config/fish/functions"
+    state: directory
+  become: true
+  when: ansible_system != "Win32NT"
+
+- name: Copy Fish settings file for Unix
+  ansible.builtin.copy:
+    dest: "{{ user_home }}/.config/fish/config.fish"
+    force: true
+    group: "{{ group_id }}"
+    mode: "640"
+    owner: "{{ user_id }}"
+    src: config.fish
+  become: true
+  when: ansible_system != "Win32NT"
+
+- name: Get installed Fish version for Unix
+  ansible.builtin.command: fish --version
+  changed_when: false
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
+  register: fish_version_text
+  when: ansible_system != "Win32NT"
+
+- name: Parse Fish version
+  ansible.builtin.set_fact:
+    fish_version: >-
+      {{ fish_version_text.stdout | regex_search('(\d+\.)+\d+') }}
+  when: ansible_system != "Win32NT"
+
+- name: Install Fisher package manager for Unix
+  ansible.builtin.shell: # noqa command-instead-of-module
+    cmd: |
+      curl -LSfs https://git.io/fisher | source
+      fisher install jorgebucaran/fisher
+    executable: "{{ fish_executable }}"
+  become: true
+  become_user: "{{ user_id }}"
+  changed_when: "'Installing jorgebucaran/fisher' in fish_fisher_install"
+  register: fish_fisher_install
+  when: >-
+    ansible_system != "Win32NT" and fish_version is
+    ansible.builtin.version("3.0", ">=")
+
+- name: Install Fish plugins for Unix
+  ansible.builtin.shell:
+    cmd: |
+      source {{ user_home }}/.config/fish/config.fish
+      fisher install {{ item }}
+    executable: "{{ fish_executable }}"
+  become: true
+  become_user: "{{ user_id }}"
+  changed_when: "'Installing' in fish_plugin_install"
+  loop: "{{ fish_plugins }}"
+  register: fish_plugin_install
+  when: >-
+    ansible_system != "Win32NT" and fish_version is
+    ansible.builtin.version("3.0", ">=")
+
+- name: Register Fish as a valid login shell
+  ansible.builtin.lineinfile:
+    path: /etc/shells
+    line: "{{ fish_executable }}"
+  become: true
+  when: ansible_system != "Win32NT"
+
+- name: Install Shadow for Alpine
+  become: true
+  community.general.apk:
+    name: shadow
+  when: ansible_pkg_mgr == "apk" and user_login == "fish"
+
+- name: Install Shadow for OpenWrt
+  become: true
+  community.general.opkg:
+    name: shadow-usermod
+  when: ansible_pkg_mgr == "opkg" and user_login == "fish"
+
+# User shell is not updated on Alpine Linux when using Ansible user module.
+# Workaround comes from https://github.com/ansible/ansible/issues/61911.
+- name: Change user default shell to Fish for Alpine
+  ansible.builtin.command:
+    cmd: chsh -s {{ fish_executable }} {{ user_id }}
+  become: true
+  changed_when: true
+  when: ansible_pkg_mgr == "apk" and user_login == "fish"
+
+- name: Change user default shell to Fish for Unix
+  ansible.builtin.user:
+    name: "{{ user_id }}"
+    shell: "{{ fish_executable }}"
+  become: true
+  when: >-
+    ansible_system != "Win32NT" and ansible_pkg_mgr != "apk" and user_login ==
+    "fish"
+
+- name: Mark role as executed to prevent reruns
+  ansible.builtin.set_fact:
+    cacheable: true
+    fish_role_executed: true

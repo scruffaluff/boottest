@@ -1,0 +1,85 @@
+# Yazi configuration file for file management.
+#
+# For more information, visit https://yazi-rs.github.io/docs/configuration/yazi.
+
+[manager]
+ratio = [0, 1, 2]
+
+[open]
+rules = [
+    { mime = "*/javascript", use = [
+        "edit",
+        "reveal",
+    ] },
+    { mime = "application/gzip", use = [
+        "extract",
+        "reveal",
+    ] },
+    { mime = "application/7z-compressed", use = [
+        "extract",
+        "reveal",
+    ] },
+    { mime = "application/bzip", use = [
+        "extract",
+        "reveal",
+    ] },
+    { mime = "application/bzip2", use = [
+        "extract",
+        "reveal",
+    ] },
+    { mime = "application/rar", use = [
+        "extract",
+        "reveal",
+    ] },
+    { mime = "application/tar", use = [
+        "extract",
+        "reveal",
+    ] },
+    { mime = "application/json", use = [
+        "edit",
+        "reveal",
+    ] },
+    { mime = "application/zip", use = [
+        "extract",
+        "reveal",
+    ] },
+    { mime = "audio/*", use = [
+        "play",
+        "reveal",
+    ] },
+    { mime = "image/*", use = [
+        "open",
+        "reveal",
+    ] },
+    { mime = "inode/empty", use = [
+        "edit",
+        "reveal",
+    ] },
+    { mime = "video/*", use = [
+        "play",
+        "reveal",
+    ] },
+    { mime = "text/*", use = [
+        "edit",
+        "reveal",
+    ] },
+    { mime = "*", use = [
+        "open",
+        "reveal",
+    ] },
+    { name = "*/", use = [
+        "edit",
+        "open",
+        "reveal",
+    ] },
+]
+
+[opener]
+edit = [
+    { block = true, for = "unix", run = '$EDITOR "$@"' },
+    { for = "windows", orphan = true, run = 'hx "%*"' },
+]
+
+[preview]
+max_height = 1080
+max_width = 1920

@@ -1,0 +1,148 @@
+---
+- name: Get all groups for Unix
+  ansible.builtin.getent:
+    database: group
+    split: ":"
+  become: true
+  when: ansible_system == "Linux"
+
+- name: Create GitHub Runner user for MacOS
+  ansible.builtin.user:
+    append: true
+    groups:
+      - wheel
+    name: github-runner
+    shell: /bin/bash
+  become: true
+  when: ansible_system == "Darwin"
+
+- name: Create GitHub Runner user for Linux
+  ansible.builtin.user:
+    append: true
+    groups: >-
+      {{ ['docker', 'wheel'] | intersect(ansible_facts.getent_group.keys()) }}
+    name: github-runner
+    shell: /bin/bash
+  become: true
+  when: ansible_system == "Linux"
+
+- name: Check if Doas is available for Unix
+  ansible.builtin.shell: command -v doas # noqa command-instead-of-shell
+  changed_when: false
+  failed_when: false
+  register: github_runner_doas_available
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Enable GitHub passwordless doas for Unix
+  ansible.builtin.blockinfile:
+    block: |
+      # Enable passwordless doas for github-runner user.
+      permit nopass github-runner
+    create: true
+    marker: >-
+      # {mark} ANSIBLE MANAGED passwordless doas for github-runner BLOCK
+    mode: "400"
+    path: /etc/doas.d/doas.conf
+    validate: doas -C %s
+  become: true
+  when: >-
+    ansible_system in ["Darwin", "Linux"] and github_runner_doas_available.rc ==
+    0
+
+- name: Check if Sudo is available for Unix
+  ansible.builtin.shell: command -v visudo # noqa command-instead-of-shell
+  changed_when: false
+  failed_when: false
+  register: github_runner_sudo_available
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Enable GitHub Runner passwordless sudo for Unix
+  ansible.builtin.blockinfile:
+    block: |
+      # Enable passwordless sudo for github-runner user.
+      github-runner ALL=(ALL) NOPASSWD:ALL
+    create: true
+    marker: "# {mark} ANSIBLE MANAGED passwordless sudo for github-runner BLOCK"
+    # File needs to have 440 permissions as explained at
+    # https://wiki.archlinux.org/title/sudo#Sudoers_default_file_permissions.
+    mode: "440"
+    path: /etc/sudoers
+    validate: visudo --check --file %s
+  become: true
+  when: >-
+    ansible_system in ["Darwin", "Linux"] and github_runner_sudo_available.rc ==
+    0
+
+- name: Create GitHub Runner directory for Unix
+  ansible.builtin.file:
+    mode: "750"
+    owner: github-runner
+    path: "{{ github_runner_folder }}"
+    state: directory
+  become: true
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Create GitHub Runner user for Windows
+  ansible.windows.win_user:
+    name: github-runner
+    state: present
+  when: ansible_system == "Win32NT"
+
+- name: Create GitHub Runner directory for Windows
+  ansible.windows.win_file:
+    owner: "{{ user_id }}"
+    path: "{{ github_runner_folder }}"
+    state: directory
+  when: ansible_system == "Win32NT"
+
+- name: Get latest GitHub Runner version for Unix
+  ansible.builtin.uri:
+    headers: "{{ github_api_headers }}"
+    method: GET
+    return_content: true
+    url: https://api.github.com/repos/actions/runner/releases/latest
+  register: github_runner_release_unix
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Download GitHub Runner for Unix
+  ansible.builtin.unarchive:
+    dest: "{{ github_runner_folder }}"
+    mode: "750"
+    owner: github-runner
+    remote_src: true
+    src: >-
+      https://github.com/actions/runner/releases/download/{{
+      github_runner_release_unix.json.tag_name }}/actions-runner-{{
+      github_runner_os[ansible_system] }}-{{ github_runner_arch }}-{{
+      github_runner_release_unix.json.tag_name[1:] }}.tar.gz
+  become: true
+  vars:
+    github_runner_os:
+      Darwin: osx
+      Linux: linux
+  when: ansible_system in ["Darwin", "Linux"]
+
+- name: Get latest GitHub Runner version for Windows
+  ansible.windows.win_uri:
+    headers: "{{ github_api_headers }}"
+    method: GET
+    return_content: true
+    url: https://api.github.com/repos/actions/runner/releases/latest
+  register: github_runner_release_windows
+  when: ansible_system == "Win32NT"
+
+- name: Download GitHub Runner archive for Windows
+  ansible.windows.win_get_url:
+    dest: "{{ ansible_env.TEMP }}/github_runner.zip"
+    url: >-
+      https://github.com/actions/runner/releases/download/{{
+      github_runner_release_windows.json.tag_name }}/actions-runner-win-{{
+      github_runner_arch }}-{{ github_runner_release_windows.json.tag_name[1:]
+      }}.zip
+  when: ansible_system == "Win32NT"
+
+- name: Decompress GitHub Runner archive for Windows
+  community.windows.win_unzip:
+    dest: "{{ github_runner_folder }}"
+    src: "{{ ansible_env.TEMP }}/github_runner.zip"
+  when: ansible_system == "Win32NT"

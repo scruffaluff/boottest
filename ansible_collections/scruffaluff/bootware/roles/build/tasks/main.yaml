@@ -1,0 +1,80 @@
+---
+- name: Install build tools for Alpine
+  become: true
+  community.general.apk:
+    name: build-base
+  when: ansible_pkg_mgr == "apk"
+
+- name: Install build tools for FreeBSD
+  become: true
+  community.general.pkgng:
+    name:
+      - cmake
+      - gcc
+      - gmake
+      - llvm
+      - openocd
+  when: ansible_system == "FreeBSD"
+
+- name: Install build tools for Linux
+  ansible.builtin.package:
+    name:
+      - clang
+      - cmake
+      - gcc
+      - lld
+      - llvm
+      - make
+      - openocd
+      - "{{ 'pkgconf' if ansible_pkg_mgr == 'apk' else 'pkg-config' }}"
+  become: true
+  when: ansible_system == "Linux" and ansible_pkg_mgr != "opkg"
+
+# GDB support is temporarily disabled in Bootware for MacOS, since GDB is not
+# available for Apple silicon. Visit https://formulae.brew.sh/formula/gdb for
+# status. Mold is Brew installable on MacOS, but does not work on MacOS.
+- name: Install build tools for MacOS
+  community.general.homebrew:
+    name:
+      - cmake
+      - gcc
+      - llvm
+      - make
+      - openocd
+  when: ansible_system == "Darwin"
+
+- name: Install build tools for OpenWrt
+  ansible.builtin.package:
+    name:
+      - gcc
+      - make
+      - openocd
+      - pkg-config
+  become: true
+  when: ansible_pkg_mgr == "opkg"
+
+- name: Install build tools with Chocolatey for Windows
+  chocolatey.chocolatey.win_chocolatey:
+    name:
+      - dotnetcore-sdk
+      - visualstudio2022buildtools
+      - visualstudio2022-workload-vctools
+      - windows-sdk-10.1
+  when: ansible_system == "Win32NT"
+
+- name: Install build tools with Scoop for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name:
+      - cmake
+      - dotnet-sdk
+      - llvm
+      - make
+      - openocd
+      - pkg-config
+  when: ansible_system == "Win32NT"
+
+- name: Mark role as executed to prevent reruns
+  ansible.builtin.set_fact:
+    cacheable: true
+    build_role_executed: true

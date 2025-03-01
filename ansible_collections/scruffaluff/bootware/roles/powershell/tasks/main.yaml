@@ -1,0 +1,96 @@
+---
+# Do not integrate PSGallery! Its trust workflow is exceedingly unrealiable on
+# Windows 11.
+- name: Get latest PowerShell Core version for Windows
+  ansible.windows.win_uri:
+    method: GET
+    return_content: true
+    url: https://formulae.brew.sh/api/cask/powershell.json
+  register: powershell_cask
+  when: ansible_system == "Win32NT"
+
+- name: Install PowerShell Core for Windows
+  ansible.windows.win_package:
+    arguments:
+      - /quiet
+      - ENABLE_PSREMOTING=1
+      - REGISTER_MANIFEST=1
+    path: >-
+      https://github.com/PowerShell/PowerShell/releases/download/v{{
+      powershell_cask.json.version }}/PowerShell-{{ powershell_cask.json.version
+      }}-win-{{ powershell_arch[system_architecture] }}.msi
+  vars:
+    powershell_arch:
+      amd64: x64
+      arm64: arm64
+  when: ansible_system == "Win32NT"
+
+- name: Create PowerShell settings directories for Windows
+  ansible.windows.win_file:
+    owner: "{{ user_id }}"
+    path: "{{ user_home }}/{{ item }}"
+    state: directory
+  loop:
+    - Documents/PowerShell
+    - Documents/PowerShell/Modules
+    - Documents/WindowsPowerShell
+    - Documents/WindowsPowerShell/Modules
+  when: ansible_system == "Win32NT"
+
+- name: Copy PowerShell settings files for Windows
+  ansible.windows.win_copy:
+    dest: "{{ user_home }}/{{ item }}"
+    force: true
+    owner: "{{ user_id }}"
+    src: profile.ps1
+  loop:
+    - Documents/PowerShell/Microsoft.PowerShell_profile.ps1
+    - Documents/WindowsPowerShell/Microsoft.PowerShell_profile.ps1
+  when: ansible_system == "Win32NT"
+
+- name: Install local PowerShell modules
+  vars:
+    powershell_module_folders:
+      - Documents/PowerShell/Modules
+      - Documents/WindowsPowerShell/Modules
+    powershell_modules:
+      - SSHCompletion
+  when: ansible_system == "Win32NT"
+  block:
+    - name: Create PowerShell module directories for Windows
+      ansible.windows.win_file:
+        owner: "{{ user_id }}"
+        path: "{{ user_home }}/{{ item[0] }}/{{ item[1] }}"
+        state: directory
+      loop:
+        "{{ powershell_module_folders | product(powershell_modules) | list }}"
+
+    - name: Copy PowerShell modules for Windows
+      ansible.windows.win_copy:
+        dest: >-
+          {{ user_home }}/{{ item[0] }}/{{ item[1] }}/{{ item[1] }}.psm1
+        force: true
+        owner: "{{ user_id }}"
+        src: "{{ item[1] }}.psm1"
+      loop:
+        "{{ powershell_module_folders | product(powershell_modules) | list }}"
+
+- name: Disable PowerShell update check during startup for Windows
+  ansible.windows.win_environment:
+    level: machine
+    name: POWERSHELL_UPDATECHECK
+    value: "Off"
+  when: ansible_system == "Win32NT"
+
+- name: Set PowerShell Core as default OpenSSH shell for Windows
+  ansible.windows.win_regedit:
+    data: "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+    name: DefaultShell
+    path: "HKLM:\\SOFTWARE\\OpenSSH"
+    type: string
+  when: ansible_system == "Win32NT" and user_login == "powershell"
+
+- name: Mark role as executed to prevent reruns
+  ansible.builtin.set_fact:
+    cacheable: true
+    powershell_role_executed: true

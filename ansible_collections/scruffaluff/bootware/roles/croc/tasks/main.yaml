@@ -1,0 +1,110 @@
+---
+- name: Install Croc for FreeBSD
+  become: true
+  community.general.pkgng:
+    name: croc
+  when: ansible_system == "FreeBSD"
+
+- name: Install Croc for Linux
+  ansible.builtin.package:
+    name: croc
+  become: true
+  ignore_errors: true
+  register: croc_linux
+  when: ansible_system == "Linux"
+
+# Temporarily overriden as of 05/31/2024 until Homebrew gets the Croc version
+# correct.
+# - name: Get latest Croc version for Linux
+#   ansible.builtin.uri:
+#     method: GET
+#     return_content: true
+#     url: https://formulae.brew.sh/api/formula/croc.json
+#   register: croc_formula
+#   when: ansible_system == "Linux" and croc_linux is failed
+
+# - name: Download Croc for Linux
+#   ansible.builtin.unarchive:
+#     dest: /tmp
+#     mode: "777"
+#     remote_src: true
+#     src: >-
+#       https://github.com/schollz/croc/releases/download/v{{
+#       croc_formula.json.versions.stable }}/croc_v{{
+#       croc_formula.json.versions.stable }}_Linux-{{
+#       croc_arch[system_architecture] }}.tar.gz
+#   vars:
+#     croc_arch:
+#       amd64: 64bit
+#       arm64: ARM64
+#   when: ansible_system == "Linux" and croc_linux is failed
+
+- name: Get latest Croc version for Linux
+  ansible.builtin.uri:
+    headers: "{{ github_api_headers }}"
+    method: GET
+    return_content: true
+    url: https://api.github.com/repos/schollz/croc/releases/latest
+  register: croc_release
+  when: ansible_system == "Linux" and croc_linux is failed
+
+- name: Download Croc for Linux
+  ansible.builtin.unarchive:
+    dest: /tmp
+    mode: "777"
+    remote_src: true
+    src: >-
+      https://github.com/schollz/croc/releases/download/{{
+      croc_release.json.tag_name }}/croc_{{ croc_release.json.tag_name
+      }}_Linux-{{ croc_arch[system_architecture] }}.tar.gz
+  vars:
+    croc_arch:
+      amd64: 64bit
+      arm64: ARM64
+  when: ansible_system == "Linux" and croc_linux is failed
+
+- name: Install Croc for Linux
+  ansible.builtin.copy:
+    dest: /usr/local/bin/croc
+    force: true
+    mode: "755"
+    remote_src: true
+    src: /tmp/croc
+  become: true
+  when: ansible_system == "Linux" and croc_linux is failed
+
+- name: Install Croc for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name: croc
+  when: ansible_system == "Darwin"
+
+- name: Install Croc for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: croc
+  when: ansible_system == "Win32NT"
+
+- name: Add Croc Firewall rules for Windows
+  community.windows.win_firewall_rule:
+    action: allow
+    direction: "{{ item['direction'] }}"
+    localport: any
+    name: Croc
+    profiles:
+      - domain
+      - private
+      - public
+    program: "{{ scoop_apps }}\\croc\\current\\croc.exe"
+    protocol: "{{ item['protocol'] }}"
+  loop:
+    - direction: in
+      protocol: tcp
+    - direction: in
+      protocol: udp
+    - direction: out
+      protocol: tcp
+    - direction: out
+      protocol: udp
+  when: ansible_system == "Win32NT"

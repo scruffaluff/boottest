@@ -1,0 +1,37 @@
+---
+font_families:
+  - check: FiraCode-Regular.ttf
+    name: fira-code
+    patterns:
+      - FiraCode-*.ttf
+    url: https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip
+  - check: FiraCodeNerdFont-Regular.ttf
+    name: fira-code-nerd-font
+    patterns:
+      - FiraCodeNerdFont-*.ttf
+    url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/FiraCode.zip
+  - check: FiraMono-Regular.ttf
+    name: fira-mono
+    patterns:
+      - FiraMono-*.ttf
+    url: https://github.com/mozilla/Fira/archive/4.202.zip
+  - check: FiraSans-Regular.ttf
+    name: fira-sans
+    patterns:
+      - FiraSans-*.ttf
+    url: https://github.com/mozilla/Fira/archive/4.202.zip
+  - check: PTM55FT.ttf
+    name: pt-mono
+    patterns:
+      - PT*.ttf
+    url: https://www.fontsquirrel.com/fonts/download/pt-mono
+  - check: PTS55F.ttf
+    name: pt-sans
+    patterns:
+      - PT*.ttf
+    url: https://www.fontsquirrel.com/fonts/download/pt-sans
+  - check: PTF55F.ttf
+    name: pt-serif
+    patterns:
+      - PT*.ttf
+    url: https://www.fontsquirrel.com/fonts/download/pt-serif

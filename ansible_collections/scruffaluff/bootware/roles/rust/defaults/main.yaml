@@ -1,0 +1,41 @@
+---
+rust_applications_:
+  always:
+    - cargo-audit
+    - cargo-bloat
+    - cargo-cache
+    - cargo-edit
+    - cargo-make
+    - cargo-update
+    - cargo-watch
+    - cross
+  Darwin:
+    amd64: []
+    always: []
+    arm64: []
+  FreeBSD:
+    amd64: []
+    always:
+      - cargo-binutils
+    arm64: []
+  Linux:
+    amd64:
+      - cargo-expand
+      - cargo-generate
+      - cargo-tarpaulin
+    always:
+      - cargo-binutils
+    arm64: []
+  Win32NT:
+    amd64: []
+    always: []
+    arm64: []
+rust_applications: >-
+  {{ rust_applications_.always + rust_applications_[ansible_system].always +
+  rust_applications_[ansible_system].get(system_architecture, []) }}
+rust_components:
+  - clippy
+  - llvm-tools-preview
+  - rust-src
+  - rustfmt
+rust_targets: []

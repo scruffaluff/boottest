@@ -1,0 +1,7 @@
+# Ripgrep configuration file.
+#
+# For more information, visit
+# https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md#configuration-file.
+
+--no-require-git
+--smart-case

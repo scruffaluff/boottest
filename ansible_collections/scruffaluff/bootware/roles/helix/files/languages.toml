@@ -1,0 +1,83 @@
+# Helix configuration file for language specific settings.
+#
+# For more information, visit https://docs.helix-editor.com/languages.html.
+
+[[language]]
+name = "bash"
+auto-format = true
+file-types = [
+    "sh",
+    "bash",
+    "zsh",
+    ".bash_login",
+    ".bash_logout",
+    ".bash_profile",
+    ".bashrc",
+    "env",
+    ".profile",
+    ".secrets",
+    ".zshenv",
+    ".zlogin",
+    ".zlogout",
+    ".zprofile",
+    ".zshrc",
+    "APKBUILD",
+    "PKGBUILD",
+    "eclass",
+    "ebuild",
+    "bazelrc",
+]
+formatter = { command = "shfmt", args = [
+    "--case-indent",
+    "--space-redirects",
+    "--indent",
+    "2",
+] }
+
+[[language]]
+name = "javascript"
+auto-format = true
+formatter = { command = "prettier", args = ["--parser", "typescript"] }
+
+[[language]]
+name = "json"
+auto-format = true
+formatter = { command = "prettier", args = ["--parser", "json"] }
+
+[[language]]
+name = "html"
+auto-format = true
+formatter = { command = "prettier", args = ["--parser", "html"] }
+
+[[language]]
+name = "markdown"
+auto-format = true
+formatter = { command = "prettier", args = ["--parser", "markdown"] }
+
+[[language]]
+name = "python"
+auto-format = true
+language-servers = ["ruff", "pyright"]
+roots = ["pyproject.toml", "setup.py", "requirements.txt"]
+
+[[language]]
+name = "starlark"
+file-types = ["bzl", "bazel", "star", { glob = "BUCK" }, { glob = "BUILD" }, { glob = "BUILD.*" }, { glob = "TARGETS" }, { glob = "Tiltfile" }, { glob = "WORKSPACE" }]
+
+[[language]]
+name = "typescript"
+auto-format = true
+formatter = { command = "prettier", args = ["--parser", "typescript"] }
+
+[[language]]
+name = "yaml"
+auto-format = true
+formatter = { command = "prettier", args = ["--parser", "yaml"] }
+
+[language-server.pyright]
+args = ["--stdio"]
+command = "pyright-langserver"
+
+[language-server.ruff]
+args = ["server"]
+command = "ruff"

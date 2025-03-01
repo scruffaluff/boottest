@@ -1,0 +1,93 @@
+---
+- name: Install Miniserve for FreeBSD
+  become: true
+  community.general.pkgng:
+    name: miniserve
+  when: ansible_system == "FreeBSD"
+
+- name: Install Miniserve for Linux
+  ansible.builtin.package:
+    name: miniserve
+  become: true
+  ignore_errors: true
+  register: miniserve_linux
+  when: ansible_system == "Linux"
+
+- name: Get latest Miniserve version for Linux
+  ansible.builtin.uri:
+    method: GET
+    return_content: true
+    url: https://formulae.brew.sh/api/formula/miniserve.json
+  register: miniserve_formula
+  when: ansible_system == "Linux" and miniserve_linux is failed
+
+- name: Install Miniserve for Linux
+  ansible.builtin.get_url:
+    dest: /usr/local/bin/miniserve
+    force: true
+    mode: "755"
+    url: >-
+      https://github.com/svenstaro/miniserve/releases/download/v{{
+      miniserve_formula.json.versions.stable }}/miniserve-{{
+      miniserve_formula.json.versions.stable }}-{{
+      miniserve_arch[system_architecture] }}-unknown-linux-{{ miniserve_libc }}
+  become: true
+  vars:
+    miniserve_arch:
+      amd64: x86_64
+      arm64: aarch64
+    miniserve_libc: >-
+      {{ 'gnu' if glibc_version is defined and glibc_version is
+      ansible.builtin.version("2.38", ">") else 'musl' }}
+  when: ansible_system == "Linux" and miniserve_linux is failed
+
+- name: Install Miniserve for MacOS
+  become: true
+  become_user: "{{ brew_user }}"
+  community.general.homebrew:
+    name: miniserve
+  when: ansible_system == "Darwin"
+
+- name: Install Miniserve for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: miniserve
+  when: ansible_system == "Win32NT"
+
+- name: Create shell completion directories for Unix
+  ansible.builtin.file:
+    mode: "755"
+    path: "{{ item }}"
+    state: directory
+  become: true
+  loop:
+    - "{{ bash_completion }}"
+    - "{{ fish_completion }}"
+  when: ansible_system != "Win32NT"
+
+- name: Create Miniserve shell completions for Unix
+  ansible.builtin.shell:
+    cmd: miniserve --print-completions {{ item }} > /tmp/miniserve.{{ item }}
+  become: true
+  changed_when: true
+  environment:
+    PATH: "/opt/homebrew/bin:/usr/local/bin:{{ ansible_env.PATH }}"
+  loop:
+    - bash
+    - fish
+  when: ansible_system != "Win32NT"
+
+- name: Install Miniserve shell completions for Unix
+  ansible.builtin.copy:
+    dest: "{{ item.dest }}"
+    force: true
+    mode: "644"
+    remote_src: true
+    src: /tmp/miniserve.{{ item.shell }}
+  become: true
+  loop:
+    - dest: "{{ bash_completion }}/miniserve"
+      shell: bash
+    - dest: "{{ fish_completion }}/miniserve.fish"
+      shell: fish
+  when: ansible_system != "Win32NT"

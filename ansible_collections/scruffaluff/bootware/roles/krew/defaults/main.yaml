@@ -1,0 +1,15 @@
+---
+krew_plugins_:
+  always: []
+  Darwin:
+    - ctx
+    - ns
+  FreeBSD:
+    - ctx
+    - ns
+  Linux:
+    - ctx
+    - ns
+  Win32NT: []
+krew_plugins: >-
+  {{ krew_plugins_.always + krew_plugins_.get(ansible_system, []) }}

@@ -1,0 +1,58 @@
+---
+# TODO: Integrate once installation becomes stable.
+# - name: Install Google Chrome for Alpine
+#   become: true
+#   community.general.apk:
+#     name: chromium
+#     repository: http://dl-cdn.alpinelinux.org/alpine/edge/community
+#     state: latest
+#     update_cache: true
+#   when: ansible_pkg_mgr == "apk"
+
+- name: Install Google Chrome for Arch
+  become: true
+  community.general.pacman:
+    name: chromium
+  when: ansible_pkg_mgr == "pacman"
+
+- name: Install Google Chrome for Debian
+  ansible.builtin.apt:
+    deb: https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+  become: true
+  when: ansible_pkg_mgr == "apt" and system_architecture == "amd64"
+
+- name: Add Google GPG key for Fedora and Suse
+  ansible.builtin.rpm_key:
+    key: https://dl.google.com/linux/linux_signing_key.pub
+  become: true
+  when: >-
+    ansible_pkg_mgr in ["dnf", "dnf5", "zypper"] and system_architecture ==
+    "amd64"
+
+- name: Install Google Chrome for Fedora and Suse
+  ansible.builtin.dnf:
+    name: >-
+      https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm
+  become: true
+  when: >-
+    ansible_pkg_mgr in ["dnf", "dnf5", "zypper"] and system_architecture ==
+    "amd64"
+
+- name: Install Google Chrome for FreeBSD
+  become: true
+  community.general.pkgng:
+    name: chromium
+  when: ansible_system == "FreeBSD"
+
+- name: Install Google Chrome for MacOS
+  community.general.homebrew_cask:
+    accept_external_apps: true
+    name: google-chrome
+    state: present
+  when: ansible_system == "Darwin"
+
+- name: Install Google Chrome for Windows
+  community.windows.win_scoop:
+    global: "{{ scoop_global }}"
+    name: googlechrome
+  when: ansible_system == "Win32NT"

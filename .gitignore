@@ -1,0 +1,30 @@
+# Git configuration file for ignoring untracked paths.
+#
+# For more information, visit https://git-scm.com/docs/gitignore.
+
+__pycache__/
+.DS_Store
+.env
+.hypothesis/
+.local/
+.vagrant/
+.venv/
+.vitepress/cache/
+.vitepress/dist/
+.vscode/
+*.bak
+*.lock
+*.log
+*.tar.gz
+/build/
+/docs/software.md
+/site/
+/tmp/
+ansible_collections/*
+ansible_collections/scruffaluff/bootware/CHANGELOG.md
+ansible_collections/scruffaluff/bootware/README.md
+CHANGELOG.md
+deno.lock
+dist/
+node_modules/
+!ansible_collections/scruffaluff
