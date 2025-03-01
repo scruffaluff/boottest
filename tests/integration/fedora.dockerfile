@@ -21,7 +21,7 @@ USER fedora
 
 RUN id
 
-RUN sudo whoami
+RUN sudo -n whoami
 
 # Install Bootware.
 COPY bootware.sh /usr/local/bin/bootware
