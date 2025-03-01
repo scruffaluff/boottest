@@ -11,7 +11,7 @@ RUN dnf install --assumeyes curl sudo
 # Disabling TTY requirement is necessary for CI workflows.
 RUN useradd --create-home --no-log-init fedora \
     && groupadd sudo \
-    && usermod --append --groups sudo fedora \
+    && usermod --append --groups sudo,wheel fedora \
     && printf "\nfedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
 
 RUN sudo --version
@@ -21,7 +21,7 @@ USER fedora
 
 RUN id
 
-RUN sudo whoami || journalctl -xe | grep sudo
+RUN sudo whoami
 
 # Install Bootware.
 COPY bootware.sh /usr/local/bin/bootware
