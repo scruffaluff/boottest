@@ -20,15 +20,8 @@ jobs:
     name: Test bootstrapping software for Fedora Linux
     env:
       DOCKER_BUILD_SUMMARY: "false"
-    # Fedora test fails in initial setup as of 01/18/2025 due to a "
-    # Authentication service cannot retrieve authentication info" sudo error
-    # which does not happen locally.
     runs-on: ubuntu-24.04
     steps:
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Set up QEMU
@@ -38,7 +31,9 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
-          build-args: test=true
+          build-args: |
+            tags=essential
+            test=true
           context: .
           file: tests/integration/fedora.dockerfile
           platforms: linux/${{ inputs.platform || 'amd64' }}

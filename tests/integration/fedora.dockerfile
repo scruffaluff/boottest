@@ -12,10 +12,14 @@ RUN dnf install --assumeyes curl sudo
 RUN useradd --create-home --no-log-init fedora \
     && groupadd sudo \
     && usermod --append --groups sudo fedora \
-    && printf "fedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
+    && printf "\nfedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
+
+RUN sudo --version
 
 ENV HOME=/home/fedora USER=fedora
 USER fedora
+
+RUN ls -lah /proc/self && ls -lah /sys/fs/cgroup
 
 # Install Bootware.
 COPY bootware.sh /usr/local/bin/bootware
