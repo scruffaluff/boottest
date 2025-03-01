@@ -14,6 +14,7 @@ RUN useradd --create-home --no-log-init fedora \
     && usermod --append --groups sudo,wheel fedora \
     && printf "\nfedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
 
+RUN printf "\nsession required pam_permit.so\n" /etc/pam.d/sudo
 RUN sudo --version
 
 ENV HOME=/home/fedora USER=fedora
