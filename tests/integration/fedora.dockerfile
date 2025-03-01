@@ -12,10 +12,8 @@ RUN dnf install --assumeyes curl sudo
 RUN useradd --create-home --no-log-init fedora \
     && groupadd sudo \
     && usermod --append --groups sudo fedora \
-    && printf "fedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
-
-# Fix shadow.
-RUN chmod 0640 /etc/shadow
+    && printf "fedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers \
+    && printf "Defaults !requiretty\n" >> /etc/sudoers
 
 ENV HOME=/home/fedora USER=fedora
 USER fedora
