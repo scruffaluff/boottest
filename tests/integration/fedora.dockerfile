@@ -1,4 +1,4 @@
-FROM fedora:41
+FROM fedora:40
 
 ARG TARGETARCH
 
@@ -12,8 +12,7 @@ RUN dnf install --assumeyes curl sudo
 RUN useradd --create-home --no-log-init fedora \
     && groupadd sudo \
     && usermod --append --groups sudo fedora \
-    && printf "fedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers \
-    && printf "Defaults !requiretty\n" >> /etc/sudoers
+    && printf "fedora ALL=(ALL) NOPASSWD:ALL\n" >> /etc/sudoers
 
 ENV HOME=/home/fedora USER=fedora
 USER fedora
