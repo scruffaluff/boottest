@@ -19,7 +19,9 @@ RUN sudo --version
 ENV HOME=/home/fedora USER=fedora
 USER fedora
 
-RUN ls -lah /proc/self && ls -lah /sys/fs/cgroup
+RUN id
+
+RUN sudo whoami || journalctl -xe | grep sudo
 
 # Install Bootware.
 COPY bootware.sh /usr/local/bin/bootware
